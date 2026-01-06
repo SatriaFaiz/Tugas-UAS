@@ -146,7 +146,7 @@ export async function POST(request: NextRequest) {
           headers: {
             'Authorization': `Bearer ${process.env.OPENROUTER_API_KEY}`,
             'HTTP-Referer': 'http://localhost:3000',
-            'X-Title': 'AI Generator Soal Ujian',
+            'X-Title': 'ExamCraft AI',
             'Content-Type': 'application/json'
           },
           body: JSON.stringify({
@@ -218,7 +218,7 @@ export async function POST(request: NextRequest) {
  */
 export async function GET() {
   return NextResponse.json({
-    message: 'AI Question Generator API',
+    message: 'ExamCraft AI Question Generator API',
     version: '1.0.0',
     endpoints: {
       'POST /api/generate-questions': 'Generate questions from learning material',

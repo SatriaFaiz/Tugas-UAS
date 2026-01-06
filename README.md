@@ -1,3 +1,7 @@
+# ExamCraft AI
+
+Buat soal ujian otomatis dari materi pembelajaran menggunakan teknologi AI.
+
 This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
 
 ## Getting Started
