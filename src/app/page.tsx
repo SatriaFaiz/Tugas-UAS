@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import jsPDF from 'jspdf';
+// jsPDF will be dynamically imported to avoid SSR/Turbopack build issues
 
 // Interface untuk tipe data
 interface QuestionForm {
@@ -108,24 +108,28 @@ export default function Home() {
   };
 
   // Handler untuk download soal sebagai PDF
-  const handleDownloadPDF = () => {
+  const handleDownloadPDF = async () => {
     if (generatedQuestions.length === 0) return;
 
+    // Dynamic import to avoid SSR/Turbopack issues
+    const jsPDFModule: any = await import('jspdf');
+    const jsPDFConstructor = jsPDFModule.jsPDF || jsPDFModule.default || jsPDFModule;
+
     const { questionType } = formData;
-    const doc = new jsPDF();
-    
+    const doc = new jsPDFConstructor();
+
     // Set font untuk mendukung Unicode (Indonesian)
     doc.setFont('helvetica');
-    
+
     let yPosition = 20;
     const lineHeight = 7;
     const pageHeight = doc.internal.pageSize.height;
-    
+
     // Header
     doc.setFontSize(20);
     doc.text('AI GENERATOR SOAL UJIAN', 105, yPosition, { align: 'center' });
     yPosition += 15;
-    
+
     doc.setFontSize(12);
     doc.text(`Jenis Soal: ${getQuestionTypeLabel(questionType)}`, 20, yPosition);
     yPosition += lineHeight;
@@ -135,7 +139,7 @@ export default function Home() {
     yPosition += lineHeight;
     doc.text(`Tanggal: ${new Date().toLocaleString('id-ID')}`, 20, yPosition);
     yPosition += lineHeight * 2;
-    
+
     // Generate soal
     generatedQuestions.forEach((question, index) => {
       // Check if we need a new page
