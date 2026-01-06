@@ -100,7 +100,7 @@ export default function Home() {
     const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
     link.href = url;
-    link.download = `soal-ujian-${questionType}-${new Date().toISOString().split('T')[0]}.txt`;
+    link.download = `examcraft-questions-${questionType}-${new Date().toISOString().split('T')[0]}.txt`;
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
@@ -240,7 +240,7 @@ export default function Home() {
     doc.text('Powered by OpenRouter AI', 105, yPosition, { align: 'center' });
     
     // Download PDF
-    doc.save(`soal-ujian-${questionType}-${new Date().toISOString().split('T')[0]}.pdf`);
+    doc.save(`examcraft-questions-${questionType}-${new Date().toISOString().split('T')[0]}.pdf`);
   };
 
   // Handler untuk generate soal

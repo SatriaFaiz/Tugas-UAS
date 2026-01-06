@@ -1,5 +1,7 @@
 # ExamCraft AI
 
+![Version](https://img.shields.io/badge/version-0.1.0-blue) ![Deploy](https://img.shields.io/badge/deploy-vercel-black)
+
 Buat soal ujian otomatis dari materi pembelajaran menggunakan teknologi AI.
 
 This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).

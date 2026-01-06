@@ -15,6 +15,9 @@ const geistMono = Geist_Mono({
 export const metadata: Metadata = {
   title: "ExamCraft AI",
   description: "ExamCraft AI — buat soal ujian otomatis menggunakan AI",
+  icons: {
+    icon: '/favicon.svg'
+  }
 };
 
 export default function RootLayout({
