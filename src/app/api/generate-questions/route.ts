@@ -1,13 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { GoogleGenerativeAI } from '@google/generative-ai';
-
-// Inisialisasi Google Gemini API dengan API key dari environment variables
-const genAI = process.env.GOOGLE_GEMINI_API_KEY ? new GoogleGenerativeAI(process.env.GOOGLE_GEMINI_API_KEY) : null;
 
 // Interface untuk tipe data request
 interface GenerateRequest {
   material: string;
-  questionType: 'multiple-choice' | 'fill-blank' | 'true-false' | 'essay';
+  questionType: 'multiple-choice' | 'essay';
   questionCount: number;
   difficulty?: 'easy' | 'medium' | 'hard';
 }
@@ -45,31 +41,6 @@ function createPrompt(request: GenerateRequest): string {
   ]
 }`;
       break;
-      
-    case 'fill-blank':
-      prompt += `{
-  "questions": [
-    {
-      "question": "pertanyaan dengan bagian kosong ___",
-      "correctAnswer": "jawaban yang tepat",
-      "explanation": "penjelasan singkat"
-    }
-  ]
-}`;
-      break;
-      
-    case 'true-false':
-      prompt += `{
-  "questions": [
-    {
-      "question": "pernyataan yang harus dinilai benar/salah",
-      "correctAnswer": "benar" atau "salah",
-      "explanation": "penjelasan singkat"
-    }
-  ]
-}`;
-      break;
-      
     case 'essay':
       prompt += `{
   "questions": [
@@ -87,107 +58,11 @@ function createPrompt(request: GenerateRequest): string {
   return prompt;
 }
 
-/**
- * Fallback function untuk generate soal tanpa AI (template-based yang lebih baik)
- */
-function generateFallbackQuestions(request: GenerateRequest): NextResponse {
-  const { material, questionType, questionCount } = request;
-  const questions = [];
-
-  // Extract keywords yang lebih relevan dengan context
-  const extractRelevantKeywords = (text: string) => {
-    // Kata-kata penting dalam konteks akademis
-    const stopWords = ['a','an','yang','dan','di','dari','untuk','dengan','pada','adalah','merupakan','memiliki','dapat','akan','oleh','sebagai','dalam','ini','tersebut','karena','seperti','yaitu','atau','jika','namun','tetapi','melainkan','selain','itu','juga','sudah','belum','akan','telah','sedang','masih','lagi','antara','kepada','terhadap','tentang','mengenai','mengapa','bagaimana','berapa','kapan','dimana','siapa','apa'];
-    
-    // Filter kata-kata penting (panjang > 3 dan bukan stop words)
-    const words = text.toLowerCase().match(/\b[a-z]{4,}\b/g) || [];
-    const filtered = words.filter(word => !stopWords.includes(word));
-    
-    // Ambil kata-kata unik yang paling relevan
-    return [...new Set(filtered)].slice(0, 8);
-  };
-
-  // Extract konsep utama dari kalimat pertama
-  const getMainConcept = (text: string) => {
-    const sentences = text.split(/[.!?]+/);
-    if (sentences.length > 0) {
-      const firstSentence = sentences[0].trim();
-      const words = firstSentence.toLowerCase().match(/\b[a-z]{4,}\b/g) || [];
-      return words[0] || 'konsep';
-    }
-    return 'konsep';
-  };
-
-  const keywords = extractRelevantKeywords(material);
-  const mainConcept = getMainConcept(material);
-
-  // Generate soal yang lebih kontekstual
-  for (let i = 0; i < questionCount; i++) {
-    const keyword = keywords[i] || mainConcept;
-    
-    switch (questionType) {
-      case 'multiple-choice':
-        // Buat soal pilihan ganda yang lebih relevan
-        questions.push({
-          question: `Berdasarkan materi yang diberikan, manakah pernyataan yang paling tepat mengenai ${keyword}?`,
-          options: [
-            `${keyword} merupakan konsep penting dalam materi pembelajaran ini`,
-            `${keyword} tidak memiliki hubungan dengan topik yang dibahas`,
-            `${keyword} hanya berlaku untuk kondisi tertentu saja`,
-            `${keyword} dapat diabaikan dalam pemahaman materi`
-          ],
-          correctAnswer: `${keyword} merupakan konsep penting dalam materi pembelajaran ini`,
-          explanation: `Berdasarkan materi pembelajaran yang diberikan, ${keyword} adalah konsep yang relevan dan penting untuk dipahami.`
-        });
-        break;
-        
-      case 'fill-blank':
-        questions.push({
-          question: `Dalam konteks materi ini, ${keyword} berperan penting sebagai ___ untuk mencapai pemahaman yang lebih baik.`,
-          correctAnswer: 'kunci konsep',
-          explanation: `${keyword} merupakan kunci konsep yang membantu dalam memahami keseluruhan materi pembelajaran.`
-        });
-        break;
-        
-      case 'true-false':
-        questions.push({
-          question: `Berdasarkan materi pembelajaran, ${keyword} merupakan elemen penting yang perlu dipahami.`,
-          correctAnswer: 'benar',
-          explanation: `Pernyataan ini benar karena ${keyword} secara eksplisit atau implisit dibahas dalam materi pembelajaran sebagai konsep penting.`
-        });
-        break;
-        
-      case 'essay':
-        questions.push({
-          question: `Jelaskan signifikansi ${keyword} dalam konteks materi pembelajaran ini! Analisis mengapa konsep ini penting dan berikan contoh aplikasi nyata.`,
-          explanation: `Jawaban esai yang baik harus menjelaskan definisi ${keyword}, pentingnya dalam konteks materi, dan memberikan contoh konkret yang relevan.`
-        });
-        break;
-    }
-  }
-
-  return NextResponse.json({
-    success: true,
-    data: { questions },
-    metadata: {
-      model: 'improved-fallback-template',
-      questionType,
-      questionCount,
-      materialLength: material.length,
-      keywords: keywords,
-      mainConcept: mainConcept,
-      note: 'Generated using improved template-based fallback with better context awareness'
-    }
-  });
-}
+// Note: generator fallback removed — only OpenRouter is used to generate questions.
 function getQuestionTypeLabel(type: string): string {
   switch (type) {
     case 'multiple-choice':
       return 'pilihan ganda';
-    case 'fill-blank':
-      return 'isian singkat';
-    case 'true-false':
-      return 'benar/salah';
     case 'essay':
       return 'esai';
     default:
@@ -221,10 +96,10 @@ function parseAIResponse(response: string): QuestionResponse {
  */
 export async function POST(request: NextRequest) {
   try {
-    // Validasi API key - prioritaskan OpenRouter
-    if (!process.env.OPENROUTER_API_KEY && !process.env.GOOGLE_GEMINI_API_KEY && !process.env.HUGGINGFACE_API_KEY) {
+    // Validasi API key - hanya OpenRouter diperbolehkan
+    if (!process.env.OPENROUTER_API_KEY) {
       return NextResponse.json(
-        { error: 'Tidak ada API key yang dikonfigurasi (OpenRouter, Gemini, atau Hugging Face)' },
+        { error: 'Silahkan Coba Lagi' },
         { status: 500 }
       );
     }
@@ -236,14 +111,14 @@ export async function POST(request: NextRequest) {
     // Validasi input
     if (!material || material.trim().length < 50) {
       return NextResponse.json(
-        { error: 'Materi pembelajaran harus diisi minimal 50 karakter' },
+        { error: 'materi terlalu singkat' },
         { status: 400 }
       );
     }
 
-    if (!questionType || !['multiple-choice', 'fill-blank', 'true-false', 'essay'].includes(questionType)) {
+    if (!questionType || !['multiple-choice', 'essay'].includes(questionType)) {
       return NextResponse.json(
-        { error: 'Jenis soal tidak valid' },
+        { error: 'Jenis soal tidak valid. Hanya "multiple-choice" dan "essay" yang didukung.' },
         { status: 400 }
       );
     }
@@ -260,10 +135,7 @@ export async function POST(request: NextRequest) {
 
     console.log('Sending prompt to AI:', prompt.substring(0, 100) + '...');
 
-    let response;
-    let modelUsed = '';
-
-    // Coba OpenRouter API dulu - PRIORITAS UTAMA
+    // Coba OpenRouter API - satu-satunya provider
     if (process.env.OPENROUTER_API_KEY) {
       try {
         console.log('🚀 Attempting OpenRouter API with model meta-llama/llama-3.2-3b-instruct:free...');
@@ -296,8 +168,8 @@ export async function POST(request: NextRequest) {
         }
 
         const openrouterData = await openrouterResponse.json();
-        response = openrouterData.choices[0].message.content;
-        modelUsed = 'meta-llama/llama-3.2-3b-instruct:free';
+        const response = openrouterData.choices[0].message.content;
+        const modelUsed = 'meta-llama/llama-3.2-3b-instruct:free';
         console.log('✅ SUCCESS - Received response from OpenRouter:', response.substring(0, 200) + '...');
         
         // Parse response dari AI
@@ -320,71 +192,11 @@ export async function POST(request: NextRequest) {
         
       } catch (openrouterError) {
         console.error('❌ OpenRouter API Error Details:', openrouterError);
-        console.log('🔄 OpenRouter failed, trying Google Gemini...');
-        
-        // Fallback ke Google Gemini
-        if (genAI) {
-          try {
-            console.log('🚀 Attempting Gemini Direct API Call...');
-            
-            const geminiResponse = await fetch(`https://generativelanguage.googleapis.com/v1/models/gemini-pro:generateContent?key=${process.env.GOOGLE_GEMINI_API_KEY}`, {
-              method: 'POST',
-              headers: {
-                'Content-Type': 'application/json',
-              },
-              body: JSON.stringify({
-                contents: [{
-                  parts: [{
-                    text: prompt
-                  }]
-                }],
-                generationConfig: {
-                  temperature: 0.7,
-                  topP: 0.8,
-                  topK: 40,
-                  maxOutputTokens: 1000,
-                }
-              })
-            });
-
-            if (!geminiResponse.ok) {
-              const errorData = await geminiResponse.json();
-              throw new Error(`Gemini API Error: ${JSON.stringify(errorData)}`);
-            }
-
-            const geminiData = await geminiResponse.json();
-            response = geminiData.candidates[0].content.parts[0].text;
-            modelUsed = 'gemini-pro-direct';
-            console.log('✅ SUCCESS - Received response from Gemini Direct:', response.substring(0, 200) + '...');
-            
-            const parsedResponse = parseAIResponse(response);
-            return NextResponse.json({
-              success: true,
-              data: parsedResponse,
-              metadata: {
-                model: modelUsed,
-                questionType,
-                questionCount,
-                materialLength: material.length,
-                aiPowered: true,
-                apiProvider: 'Google Gemini (Fallback)',
-                note: 'Generated using Google Gemini AI API (OpenRouter fallback)'
-              }
-            });
-            
-          } catch (geminiError) {
-            console.error('❌ Gemini API Error:', geminiError);
-            console.log('🔄 All AI APIs failed, using fallback template...');
-            return generateFallbackQuestions(body);
-          }
-        } else {
-          console.log('🔄 No Gemini API key, using fallback template...');
-          return generateFallbackQuestions(body);
-        }
+        return NextResponse.json(
+          { error: 'Silahkan Coba Lagi' },
+          { status: 500 }
+        );
       }
-    } else {
-      console.log('❌ No OpenRouter API key found, using fallback...');
-      return generateFallbackQuestions(body);
     }
 
   } catch (error) {
@@ -393,7 +205,7 @@ export async function POST(request: NextRequest) {
     // Return error response
     return NextResponse.json(
       { 
-        error: 'Gagal menghasilkan soal. Silakan coba lagi.',
+        error: 'Silahkan Coba Lagi',
         details: error instanceof Error ? error.message : 'Unknown error'
       },
       { status: 500 }
@@ -413,8 +225,6 @@ export async function GET() {
     },
     supportedQuestionTypes: [
       'multiple-choice',
-      'fill-blank', 
-      'true-false',
       'essay'
     ]
   });

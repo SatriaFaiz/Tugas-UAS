@@ -6,7 +6,7 @@ import jsPDF from 'jspdf';
 // Interface untuk tipe data
 interface QuestionForm {
   material: string;
-  questionType: 'multiple-choice' | 'fill-blank' | 'true-false' | 'essay';
+  questionType: 'multiple-choice' | 'essay';
   questionCount: number;
   difficulty: 'easy' | 'medium' | 'hard';
 }
@@ -80,10 +80,6 @@ export default function Home() {
           content += `  ${letter}. ${option}${isCorrect ? ' ✓' : ''}\n`;
         });
         content += `\nKunci Jawaban: ${question.correctAnswer}\n\n`;
-      } else if (questionType === 'fill-blank') {
-        content += `Jawaban: ${question.correctAnswer || '[isi jawaban]'}\n\n`;
-      } else if (questionType === 'true-false') {
-        content += `Jawaban: ${question.correctAnswer === 'benar' ? 'Benar (✓)' : 'Salah (✗)'}\n\n`;
       } else if (questionType === 'essay') {
         content += `[Jawaban esai - lihat penjelasan untuk petunjuk]\n\n`;
       }
@@ -177,26 +173,19 @@ export default function Home() {
           }
           const letter = String.fromCharCode(65 + optIndex);
           const isCorrect = option === question.correctAnswer;
-          const optionText = `${letter}. ${option}${isCorrect ? ' ✓' : ''}`;
-          doc.text(optionText, 25, yPosition);
-          yPosition += lineHeight;
+          const optionText = `${letter}. ${option}${isCorrect ? ' (Benar)' : ''}`;
+          const optionLines = doc.splitTextToSize(optionText, 150);
+          optionLines.forEach((line: string) => {
+            if (yPosition > pageHeight - 30) {
+              doc.addPage();
+              yPosition = 20;
+            }
+            doc.text(line, 25, yPosition);
+            yPosition += lineHeight;
+          });
         });
         yPosition += lineHeight;
         doc.text(`Kunci Jawaban: ${question.correctAnswer}`, 20, yPosition);
-        yPosition += lineHeight * 2;
-      } else if (questionType === 'fill-blank') {
-        if (yPosition > pageHeight - 30) {
-          doc.addPage();
-          yPosition = 20;
-        }
-        doc.text(`Jawaban: ${question.correctAnswer || '[isi jawaban]'}`, 20, yPosition);
-        yPosition += lineHeight * 2;
-      } else if (questionType === 'true-false') {
-        if (yPosition > pageHeight - 30) {
-          doc.addPage();
-          yPosition = 20;
-        }
-        doc.text(`Jawaban: ${question.correctAnswer === 'benar' ? 'Benar (✓)' : 'Salah (✗)'}`, 20, yPosition);
         yPosition += lineHeight * 2;
       } else if (questionType === 'essay') {
         if (yPosition > pageHeight - 30) {
@@ -259,6 +248,11 @@ export default function Home() {
       return;
     }
 
+    if (formData.material.trim().length < 50) {
+      setError('materi terlalu singkat');
+      return;
+    }
+
     setIsLoading(true);
     setError('');
     setGeneratedQuestions([]);
@@ -291,8 +285,6 @@ export default function Home() {
   const getQuestionTypeLabel = (type: string) => {
     switch (type) {
       case 'multiple-choice': return 'Pilihan Ganda';
-      case 'fill-blank': return 'Isian Singkat';
-      case 'true-false': return 'Benar/Salah';
       case 'essay': return 'Esai';
       default: return 'Umum';
     }
@@ -340,34 +332,7 @@ export default function Home() {
           </div>
         )}
 
-        {questionType === 'fill-blank' && (
-          <div className="mb-4">
-            <input
-              type="text"
-              placeholder="Ketik jawaban Anda di sini..."
-              className="w-full border-2 border-gray-300 rounded-xl px-4 py-3 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 transition-all text-gray-700"
-            />
-          </div>
-        )}
-
-        {questionType === 'true-false' && (
-          <div className="grid grid-cols-2 gap-4 mb-4">
-            <label className="flex items-center space-x-3 p-4 rounded-lg hover:bg-green-50 transition-colors cursor-pointer border-2 border-gray-200 hover:border-green-300">
-              <input type="radio" name={`question-${index}`} value="true" className="w-4 h-4 text-green-600 focus:ring-green-500" />
-              <div className="flex items-center space-x-2">
-                <span className="text-2xl">✅</span>
-                <span className="font-medium text-gray-700">Benar</span>
-              </div>
-            </label>
-            <label className="flex items-center space-x-3 p-4 rounded-lg hover:bg-red-50 transition-colors cursor-pointer border-2 border-gray-200 hover:border-red-300">
-              <input type="radio" name={`question-${index}`} value="false" className="w-4 h-4 text-red-600 focus:ring-red-500" />
-              <div className="flex items-center space-x-2">
-                <span className="text-2xl">❌</span>
-                <span className="font-medium text-gray-700">Salah</span>
-              </div>
-            </label>
-          </div>
-        )}
+        
 
         {questionType === 'essay' && (
           <div className="mb-4">
@@ -410,9 +375,9 @@ export default function Home() {
               <div className="bg-blue-100 text-blue-800 px-4 py-2 rounded-full text-sm font-medium">
                 ⚡ Cepat & Otomatis
               </div>
-              <div className="bg-green-100 text-green-800 px-4 py-2 rounded-full text-sm font-medium">
-                📚 4 Jenis Soal
-              </div>
+                <div className="bg-green-100 text-green-800 px-4 py-2 rounded-full text-sm font-medium">
+                  📚 2 Jenis Soal
+                </div>
               <div className="bg-purple-100 text-purple-800 px-4 py-2 rounded-full text-sm font-medium">
                 🎯 AI Powered
               </div>
@@ -458,8 +423,6 @@ export default function Home() {
                   className="w-full border-2 border-gray-300 rounded-xl px-4 py-3 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 transition-all text-gray-700 font-medium"
                 >
                   <option value="multiple-choice">🔘 Pilihan Ganda</option>
-                  <option value="fill-blank">📝 Isian Singkat</option>
-                  <option value="true-false">✅ Benar/Salah</option>
                   <option value="essay">📄 Esai</option>
                 </select>
               </div>
